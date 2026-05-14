@@ -1,181 +1,117 @@
-"""
-app.py  —  Queue Simulation Flask Server
-=========================================
-Routes
-------
-GET  /          → serves index.html (the UI)
-POST /run       → accepts JSON params, writes settings.txt,
-                  runs ./simulation, reads results.csv, returns JSON
-GET  /health    → quick liveness check
-"""
+import turtle
 
-import os
-import subprocess
-import csv
-import json
-from flask import Flask, request, jsonify, send_from_directory
+# Window Setup
+wind = turtle.Screen()
+wind.title("Ping Pong")
+wind.bgcolor("black")
+wind.setup(width=800, height=600)
+wind.tracer(0) 
 
-# ── Paths ──────────────────────────────────────────────────────────────────
-BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
-import platform
-SIM_EXE = os.path.join(BASE_DIR, "simulation.exe" if platform.system() == "Windows" else "simulation")
-SETTINGS_TXT = os.path.join(BASE_DIR, "settings.txt")
-RESULTS_CSV  = os.path.join(BASE_DIR, "results.csv")
+# Game State 
+score_left = 0
+score_right = 0
 
-app = Flask(__name__, static_folder=BASE_DIR)
+# Game Objects 
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# Paddle Left (Red)
+paddle_left = turtle.Turtle()
+paddle_left.speed(0)
+paddle_left.shape("square")
+paddle_left.color("red") 
+paddle_left.shapesize(stretch_wid=5, stretch_len=1)
+paddle_left.penup()
+paddle_left.goto(-350, 0)
 
-def write_settings(num_servers: int, arrival_probability: int,
-                   max_service_time: int, max_simulation_time: int) -> None:
-    """Write parameters to settings.txt so the C++ exe can read them."""
-    with open(SETTINGS_TXT, "w") as f:
-        f.write(f"{num_servers} {arrival_probability} {max_service_time} {max_simulation_time}\n")
+# Paddle Right (Blue)
+paddle_right = turtle.Turtle()
+paddle_right.speed(0)
+paddle_right.shape("square")
+paddle_right.color("blue") 
+paddle_right.shapesize(stretch_wid=5, stretch_len=1)
+paddle_right.penup()
+paddle_right.goto(350, 0)
 
+# Ball
+ball = turtle.Turtle()
+ball.speed(0)
+ball.shape("square")
+ball.color("white") 
+ball.penup()
+ball.goto(0, 0)
+ball.dx = 0.25  # Horizontal Speed
+ball.dy = 0.25  # Vertical Speed
 
-def run_simulation(timeout: int = 30) -> tuple[bool, str]:
-    """
-    Execute the compiled C++ simulation.
-    Returns (success: bool, message: str).
-    """
-    if not os.path.isfile(SIM_EXE):
-        return False, f"Simulation binary not found at {SIM_EXE}. Did you compile with: g++ -o simulation main.cpp -std=c++17?"
+# Score Display
+pen = turtle.Turtle()
+pen.speed(0)
+pen.color("white")
+pen.penup()
+pen.hideturtle()
+pen.goto(0, 260)
+pen.write("Player A: 0  Player B: 0", align="center", font=("Courier", 24, "normal"))
 
-    try:
-        result = subprocess.run(
-            [SIM_EXE],
-            cwd=BASE_DIR,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        if result.returncode != 0:
-            return False, f"Simulation exited with code {result.returncode}.\nstderr: {result.stderr}"
-        return True, result.stdout
-    except subprocess.TimeoutExpired:
-        return False, f"Simulation timed out after {timeout} seconds."
-    except Exception as e:
-        return False, str(e)
+# Functions 
 
+def move_paddle(paddle, pixels):
+    """Handles movement for both paddles with boundary checking."""
+    y = paddle.ycor()
+    y += pixels
+    if 250 > y > -250: # Keeps paddles from going off-screen
+        paddle.sety(y)
 
-def read_results() -> list[dict]:
-    """Parse results.csv into a list of row dicts."""
-    if not os.path.isfile(RESULTS_CSV):
-        raise FileNotFoundError("results.csv was not produced by the simulation.")
+def update_score():
+    """Refreshes the score display."""
+    pen.clear()
+    pen.write(f"Player A: {score_left}  Player B: {score_right}", align="center", font=("Courier", 24, "normal"))
 
-    rows = []
-    with open(RESULTS_CSV, newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            rows.append({
-                "minute":            int(row["minute"]),
-                "queue_length":      int(row["queue_length"]),
-                "customers_served":  int(row["customers_served"]),
-                "avg_wait_time":     round(float(row["avg_wait_time"]), 2),
-            })
-    return rows
+# Keyboard Bindings
+wind.listen()
+# Left Paddle: W / S
+wind.onkeypress(lambda: move_paddle(paddle_left, 25), "w")
+wind.onkeypress(lambda: move_paddle(paddle_left, -25), "s")
+# Right Paddle: Up / Down Arrows
+wind.onkeypress(lambda: move_paddle(paddle_right, 25), "Up")
+wind.onkeypress(lambda: move_paddle(paddle_right, -25), "Down")
 
+# --- Main Game Loop ---
+while True:
+    wind.update()
 
-# ── Routes ─────────────────────────────────────────────────────────────────
+    # Move the Ball
+    ball.setx(ball.xcor() + ball.dx)
+    ball.sety(ball.ycor() + ball.dy)
 
-@app.route("/")
-def index():
-    """Serve the frontend HTML."""
-    return send_from_directory(BASE_DIR, "index.html")
+    # Border Collision (Top/Bottom)
+    if ball.ycor() > 290:
+        ball.sety(290)
+        ball.dy *= -1
 
+    if ball.ycor() < -290:
+        ball.sety(-290)
+        ball.dy *= -1
 
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok", "sim_binary_exists": os.path.isfile(SIM_EXE)})
+    # Goal Logic (Left/Right)
+    if ball.xcor() > 390:
+        ball.goto(0, 0)
+        ball.dx *= -1 
+        score_left += 1
+        update_score()
+        
+    if ball.xcor() < -390:
+        ball.goto(0, 0)
+        ball.dx *= -1
+        score_right += 1
+        update_score()
+        
+    # Paddle & Ball Collision Logic
+    # Right Paddle Collision
+    if (ball.xcor() > 340 and ball.xcor() < 350) and \
+       (paddle_right.ycor() + 50 > ball.ycor() > paddle_right.ycor() - 50):
+        ball.setx(340)
+        ball.dx *= -1
 
-
-@app.route("/run", methods=["POST"])
-def run():
-    """
-    Expected JSON body:
-    {
-        "servers":          int,   // number of servers         (1–20)
-        "arrival_rate":     int,   // arrival probability 1-100%
-        "service_time":     int,   // max service time in minutes
-        "simulation_time":  int    // optional, default 60
-    }
-
-    Returns JSON:
-    {
-        "rows":   [ { minute, queue_length, customers_served, avg_wait_time }, … ],
-        "summary": { avg_wait_time, max_queue_length, total_served },
-        "params":  { servers, arrival_rate, service_time, simulation_time },
-        "log":     "…stdout from the exe…"
-    }
-    """
-    body = request.get_json(force=True, silent=True) or {}
-
-    # ── Validate & extract params ──────────────────────────────────────────
-    errors = []
-
-    def get_int(key, default, lo, hi):
-        val = body.get(key, default)
-        try:
-            val = int(val)
-        except (TypeError, ValueError):
-            errors.append(f"'{key}' must be an integer.")
-            return default
-        if not (lo <= val <= hi):
-            errors.append(f"'{key}' must be between {lo} and {hi} (got {val}).")
-            return default
-        return val
-
-    num_servers       = get_int("servers",         3,  1,  20)
-    arrival_prob      = get_int("arrival_rate",    30,  1, 100)
-    max_service_time  = get_int("service_time",     8,  1, 120)
-    sim_time          = get_int("simulation_time", 60,  5, 500)
-
-    if errors:
-        return jsonify({"error": " | ".join(errors)}), 400
-
-    # ── Run pipeline ──────────────────────────────────────────────────────
-    write_settings(num_servers, arrival_prob, max_service_time, sim_time)
-
-    ok, message = run_simulation()
-    if not ok:
-        return jsonify({"error": message}), 500
-
-    try:
-        rows = read_results()
-    except FileNotFoundError as e:
-        return jsonify({"error": str(e)}), 500
-
-    if not rows:
-        return jsonify({"error": "results.csv is empty."}), 500
-
-    # ── Build summary ──────────────────────────────────────────────────────
-    wait_times   = [r["avg_wait_time"]  for r in rows]
-    queue_lens   = [r["queue_length"]   for r in rows]
-    total_served = rows[-1]["customers_served"]
-
-    summary = {
-        "avg_wait_time":   round(sum(wait_times) / len(wait_times), 2),
-        "max_queue_length": max(queue_lens),
-        "total_served":    total_served,
-    }
-
-    return jsonify({
-        "rows":    rows,
-        "summary": summary,
-        "params":  {
-            "servers":         num_servers,
-            "arrival_rate":    arrival_prob,
-            "service_time":    max_service_time,
-            "simulation_time": sim_time,
-        },
-        "log": message,
-    })
-
-
-# ── Entry point ────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    print("Queue Simulation Server")
-    print(f"  Working dir : {BASE_DIR}")
-    print(f"  Sim binary  : {SIM_EXE}")
-    print(f"  Running on  : http://localhost:5000")
-    app.run(debug=True, port=5000)
+    # Left Paddle Collision
+    if (ball.xcor() < -340 and ball.xcor() > -350) and \
+       (paddle_left.ycor() + 50 > ball.ycor() > paddle_left.ycor() - 50):
+        ball.setx(-340)
+        ball.dx *= -1

@@ -9,7 +9,7 @@ A smooth, two-player Pong clone built with Python's `turtle` graphics library. T
 - **Refactored Code:** Implements DRY principles using modular functions and lambda expressions.
 - **Real-Time Score Tracking:** Automatically tracks and displays scores for both players at the top of the screen.
 
-
+https://github.com/mahmoud-mos/Arcade-Ping-Pong-Game-Python/blob/main/Ping-Pong.png
 
 ## 🛠️ Built With
 - **Language:** Python 3.14

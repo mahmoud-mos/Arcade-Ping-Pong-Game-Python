@@ -12,7 +12,7 @@ A smooth, two-player Pong clone built with Python's `turtle` graphics library. T
 ![Ping Pong Gameplay](Ping-Pong.jpg)
 
 ## 🛠️ Built With
-- **Language:** Python 3.x
+- **Language:** Python 3.14
 - **Library:** Turtle (Standard Library)
 
 ## 🎮 How to Play

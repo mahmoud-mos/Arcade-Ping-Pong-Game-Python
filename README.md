@@ -9,6 +9,9 @@ A smooth, two-player Pong clone built with Python's `turtle` graphics library. T
 - **Refactored Structure:** Implemented using Object-Oriented Programming (OOP) with modular classes (`Game`, `Paddle`, `Ball`, `ScoreBoard`).
 - **Real-Time Score Tracking:** Automatically tracks and displays scores for both players at the top of the screen.
 
+## 📷 Game Preview
+![Ping Pong Gameplay](Ping-Pong.jpg)
+
 ## 🛠️ Built With
 - **Language:** Python 3.14
 - **Library:** Turtle (Standard Library)
@@ -21,7 +24,7 @@ A smooth, two-player Pong clone built with Python's `turtle` graphics library. T
 ### Execution
 Run the game from the terminal:
 ```bash
-python Code.py
+python pong.py
 ```
 
 ### Controls
